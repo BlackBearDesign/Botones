@@ -54,186 +54,219 @@
 <div class="grid" id="grid"></div>
 
 <script>
-const TOTAL=50;
-const pads=Array.from({length:TOTAL},(_,i)=>({num:i+1,name:'',audio:null,url:null}));
-let recognition=null,isListening=false,currentAudio=null;
-let isPlaying=false; // NUEVO: bandera para saber si hay audio sonando
+const TOTAL = 50;
+const pads = Array.from({length: TOTAL}, (_, i) => ({num: i+1, name: '', audio: null, url: null}));
+let recognition = null, isListening = false, currentAudio = null;
+let isPlaying = false;
 
-const numWords={};
-const es=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve','treinta','treinta y uno','treinta y dos','treinta y tres','treinta y cuatro','treinta y cinco','treinta y seis','treinta y siete','treinta y ocho','treinta y nueve','cuarenta','cuarenta y uno','cuarenta y dos','cuarenta y tres','cuarenta y cuatro','cuarenta y cinco','cuarenta y seis','cuarenta y siete','cuarenta y ocho','cuarenta y nueve','cincuenta'];
-for(let i=1;i<=50;i++){numWords[String(i)]=i;if(es[i])numWords[es[i]]=i}
+// Mapa de números: texto → número
+const numWords = {};
+const esWords = [
+  '','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
+  'once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve',
+  'veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis',
+  'veintisiete','veintiocho','veintinueve','treinta',
+  'treinta y uno','treinta y dos','treinta y tres','treinta y cuatro','treinta y cinco',
+  'treinta y seis','treinta y siete','treinta y ocho','treinta y nueve',
+  'cuarenta','cuarenta y uno','cuarenta y dos','cuarenta y tres','cuarenta y cuatro',
+  'cuarenta y cinco','cuarenta y seis','cuarenta y siete','cuarenta y ocho','cuarenta y nueve',
+  'cincuenta'
+];
+for (let i = 1; i <= 50; i++) {
+  numWords[String(i)] = i;
+  if (esWords[i]) numWords[esWords[i]] = i;
+}
+// Variantes alternativas que el reconocedor puede transcribir diferente
+const altForms = {
+  'veinte y uno': 21, 'veinte y dos': 22, 'veinte y tres': 23, 'veinte y cuatro': 24,
+  'veinte y cinco': 25, 'veinte y seis': 26, 'veinte y siete': 27, 'veinte y ocho': 28,
+  'veinte y nueve': 29, 'diez y seis': 16, 'diez y siete': 17, 'diez y ocho': 18, 'diez y nueve': 19
+};
+Object.assign(numWords, altForms);
 
-function extractSlot(name){const m=name.match(/^(\d+)[_.\-\s]/);return m?parseInt(m[1]):null}
-function cleanName(name){return name.replace(/\.[^.]+$/,'').replace(/^\d+[_.\-\s]+/,'').slice(0,20).trim()}
+function norm(str) {
+  return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '').trim();
+}
 
-function loadFiles(files){
-  let loaded=0;
-  Array.from(files).forEach(file=>{
-    const slot=extractSlot(file.name);
-    if(slot&&slot>=1&&slot<=TOTAL){
-      if(pads[slot-1].url)URL.revokeObjectURL(pads[slot-1].url);
-      const url=URL.createObjectURL(file);
-      pads[slot-1].audio=new Audio(url);
-      pads[slot-1].url=url;
-      pads[slot-1].name=cleanName(file.name)||file.name.replace(/\.[^.]+$/,'').slice(0,18);
+// Mapa normalizado (sin acentos) construido una vez
+const numWordsNorm = {};
+for (const [k, v] of Object.entries(numWords)) {
+  numWordsNorm[norm(k)] = v;
+}
+const sortedKeys = Object.keys(numWordsNorm).sort((a, b) => b.length - a.length);
+
+function extractSlot(name) {
+  const m = name.match(/^(\d+)[_.\-\s]/);
+  return m ? parseInt(m[1]) : null;
+}
+function cleanName(name) {
+  return name.replace(/\.[^.]+$/, '').replace(/^\d+[_.\-\s]+/, '').slice(0, 20).trim();
+}
+
+function loadFiles(files) {
+  let loaded = 0;
+  Array.from(files).forEach(file => {
+    const slot = extractSlot(file.name);
+    if (slot && slot >= 1 && slot <= TOTAL) {
+      if (pads[slot-1].url) URL.revokeObjectURL(pads[slot-1].url);
+      const url = URL.createObjectURL(file);
+      pads[slot-1].audio = new Audio(url);
+      pads[slot-1].url = url;
+      pads[slot-1].name = cleanName(file.name) || file.name.replace(/\.[^.]+$/, '').slice(0, 18);
       loaded++;
     }
   });
   render();
-  setStatus('✓ '+loaded+' cargados','playing');
-  showInfo(loaded+' audios cargados. Di el número para reproducir');
+  setStatus('✓ ' + loaded + ' cargados', 'playing');
+  showInfo(loaded + ' audios cargados. Di el número para reproducir');
 }
 
-function playPad(i){
-  const p=pads[i];
-  if(!p.audio)return;
+function playPad(i) {
+  const p = pads[i];
+  if (!p.audio) return;
 
-  // Parar audio anterior solo si existe
-  if(currentAudio&&!currentAudio.paused){
+  if (currentAudio && !currentAudio.paused) {
     currentAudio.pause();
-    currentAudio.currentTime=0;
+    currentAudio.currentTime = 0;
   }
 
-  p.audio.currentTime=0;
-  isPlaying=true; // MARCAR que está sonando
+  p.audio.currentTime = 0;
+  isPlaying = true;
+  p.audio.play().catch(e => console.error(e));
+  currentAudio = p.audio;
 
-  p.audio.play().catch(e=>console.error(e));
-  currentAudio=p.audio;
-
-  document.querySelectorAll('.pad').forEach(el=>el.classList.remove('playing'));
-  const el=document.getElementById('pad-'+i);
-  if(el){
+  document.querySelectorAll('.pad').forEach(el => el.classList.remove('playing'));
+  const el = document.getElementById('pad-' + i);
+  if (el) {
     el.classList.add('playing');
-    p.audio.onended=()=>{
+    p.audio.onended = () => {
       el.classList.remove('playing');
-      setStatus('listo','');
-      isPlaying=false; // MARCAR que terminó
-      // Reanudar micrófono SOLO cuando termina el audio
-      if(isListening){
-        setTimeout(()=>{ if(isListening) startMic(); }, 300);
+      setStatus('listo', '');
+      isPlaying = false;
+      if (isListening) {
+        setTimeout(() => { if (isListening) startMic(); }, 300);
       }
     };
   }
-  setStatus('▶ '+p.num+(p.name?' — '+p.name:''),'playing');
+  setStatus('▶ ' + p.num + (p.name ? ' — ' + p.name : ''), 'playing');
 }
 
-function render(){
-  const g=document.getElementById('grid');
-  g.innerHTML='';
-  pads.forEach((p,i)=>{
-    const d=document.createElement('div');
-    d.className='pad'+(p.audio?' loaded':'');
-    d.id='pad-'+i;
-    d.style.position='relative';
-    d.innerHTML='<div class="num">'+p.num+'</div>'+(p.audio?'<div class="name">'+p.name+'</div><div class="play" onclick="playPad('+i+')">▶ play</div><div class="del" onclick="event.stopPropagation();clearPad('+i+')">✕</div>':'<div class="empty">vacío</div>');
+function render() {
+  const g = document.getElementById('grid');
+  g.innerHTML = '';
+  pads.forEach((p, i) => {
+    const d = document.createElement('div');
+    d.className = 'pad' + (p.audio ? ' loaded' : '');
+    d.id = 'pad-' + i;
+    d.style.position = 'relative';
+    d.innerHTML = '<div class="num">' + p.num + '</div>' + (p.audio
+      ? '<div class="name">' + p.name + '</div><div class="play" onclick="playPad(' + i + ')">▶ play</div><div class="del" onclick="event.stopPropagation();clearPad(' + i + ')">✕</div>'
+      : '<div class="empty">vacío</div>');
     g.appendChild(d);
   });
 }
 
-function clearPad(i){
-  if(pads[i].url)URL.revokeObjectURL(pads[i].url);
-  pads[i].audio=null;pads[i].url=null;pads[i].name='';
+function clearPad(i) {
+  if (pads[i].url) URL.revokeObjectURL(pads[i].url);
+  pads[i].audio = null; pads[i].url = null; pads[i].name = '';
   render();
 }
 
-function setStatus(msg,type){
-  const s=document.getElementById('status');
-  s.textContent=msg;
-  s.className=type||'';
+function setStatus(msg, type) {
+  const s = document.getElementById('status');
+  s.textContent = msg;
+  s.className = type || '';
 }
 
-function showInfo(msg){document.getElementById('info').textContent=msg}
+function showInfo(msg) { document.getElementById('info').textContent = msg; }
 
-document.getElementById('micBtn').addEventListener('click',toggleMic);
+document.getElementById('micBtn').addEventListener('click', toggleMic);
 
-function toggleMic(){
-  if(isListening){stopMic()}else{startMic()}
+function toggleMic() {
+  if (isListening) { stopMic(); } else { startMic(); }
 }
 
-function startMic(){
-  // NO iniciar micrófono si hay audio sonando
-  if(isPlaying) return;
+function startMic() {
+  if (isPlaying) return;
 
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){showInfo('❌ Tu navegador no soporta voz. Usa Chrome.');return}
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showInfo('❌ Tu navegador no soporta voz. Usa Chrome.'); return; }
 
-  // Limpiar instancia anterior
-  if(recognition){
-    try{recognition.abort();}catch(e){}
-    recognition=null;
-  }
+  if (recognition) { try { recognition.abort(); } catch(e) {} recognition = null; }
 
-  recognition=new SR();
-  recognition.lang='es-MX';
-  recognition.continuous=false;
-  recognition.interimResults=false;
+  recognition = new SR();
+  recognition.lang = 'es-MX';
+  recognition.continuous = false;
+  recognition.interimResults = false;
 
-  recognition.onstart=()=>{
-    isListening=true;
+  recognition.onstart = () => {
+    isListening = true;
     document.getElementById('micBtn').classList.add('on');
-    document.getElementById('micBtn').textContent='🔴 Escuchando...';
-    setStatus('● escuchando','listening');
+    document.getElementById('micBtn').textContent = '🔴 Escuchando...';
+    setStatus('● escuchando', 'listening');
     showInfo('Di un número del 1 al 50...');
   };
 
-  recognition.onresult=(e)=>{
-    const text=e.results[0][0].transcript.toLowerCase().trim();
-    showInfo('Escuchado: "'+text+'"');
+  recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript.toLowerCase().trim();
+    showInfo('Escuchado: "' + text + '"');
     processText(text);
-    // NO reiniciar aquí — se reinicia en onended del audio
   };
 
-  recognition.onerror=(e)=>{
-    console.log('Error:',e.error);
-    if(e.error==='not-allowed'){
+  recognition.onerror = (e) => {
+    console.log('Error:', e.error);
+    if (e.error === 'not-allowed') {
       showInfo('❌ Permiso denegado. Activa el micrófono en ajustes.');
       stopMic();
-    } else if(e.error==='no-speech'){
+    } else if (e.error === 'no-speech') {
       showInfo('No se detectó voz. Intenta de nuevo.');
-      // Reiniciar solo si no hay audio
-      if(isListening && !isPlaying) setTimeout(()=>{if(isListening&&!isPlaying)startMic()},400);
+      if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 400);
     } else {
-      if(isListening && !isPlaying) setTimeout(()=>{if(isListening&&!isPlaying)startMic()},400);
+      if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 400);
     }
   };
 
-  recognition.onend=()=>{
-    // Solo reiniciar si no hay audio sonando
-    if(isListening && !isPlaying){
-      setTimeout(()=>{if(isListening&&!isPlaying)startMic()},300);
+  recognition.onend = () => {
+    if (isListening && !isPlaying) {
+      setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 300);
     }
   };
 
-  try{recognition.start()}catch(e){showInfo('Error al iniciar: '+e.message)}
+  try { recognition.start(); } catch(e) { showInfo('Error al iniciar: ' + e.message); }
 }
 
-function stopMic(){
-  isListening=false;
-  if(recognition)try{recognition.abort()}catch(e){}
-  recognition=null;
+function stopMic() {
+  isListening = false;
+  if (recognition) try { recognition.abort(); } catch(e) {}
+  recognition = null;
   document.getElementById('micBtn').classList.remove('on');
-  document.getElementById('micBtn').textContent='🎤 Activar micrófono';
-  setStatus('listo','');
+  document.getElementById('micBtn').textContent = '🎤 Activar micrófono';
+  setStatus('listo', '');
 }
 
-function processText(text){
-  const keys=Object.keys(numWords).sort((a,b)=>b.length-a.length);
-  let found=null;
-  for(const k of keys){if(text.includes(k)){found=numWords[k];break}}
-  if(found&&found>=1&&found<=TOTAL){
-    showInfo('✅ Número: '+found);
-    if(pads[found-1].audio){
-      // Parar micrófono ANTES de reproducir para que no interfiera
-      if(recognition){try{recognition.abort();}catch(e){} recognition=null;}
+function processText(text) {
+  // Normalizar: quitar acentos y caracteres raros
+  const t = norm(text);
+
+  let found = null;
+  for (const key of sortedKeys) {
+    // Buscar como palabra completa, no subcadena (evita "dos" dentro de "doce")
+    const re = new RegExp('(?<![a-z])' + key.replace(/\s+/g, '\\s+') + '(?![a-z])', 'i');
+    if (re.test(t)) { found = numWordsNorm[key]; break; }
+  }
+
+  if (found && found >= 1 && found <= TOTAL) {
+    showInfo('✅ Número: ' + found);
+    if (pads[found-1].audio) {
+      if (recognition) { try { recognition.abort(); } catch(e) {} recognition = null; }
       playPad(found-1);
     } else {
-      showInfo('Slot '+found+' vacío');
-      // Reiniciar mic si el slot está vacío
-      if(isListening && !isPlaying) setTimeout(()=>{if(isListening&&!isPlaying)startMic()},300);
+      showInfo('Slot ' + found + ' vacío');
+      if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 300);
     }
   } else {
-    showInfo('❓ No reconocí número en: "'+text+'"');
-    if(isListening && !isPlaying) setTimeout(()=>{if(isListening&&!isPlaying)startMic()},300);
+    showInfo('❓ No reconocí número en: "' + text + '"');
+    if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 300);
   }
 }
 
