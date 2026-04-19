@@ -3,38 +3,41 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>VozBoard Pro - Instant Response</title>
+<title>VozBoard Pro - v2</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#0e0e11;color:#f0f0f5;font-family:sans-serif;min-height:100vh;padding:10px}
+  body{background:#0e0e11;color:#f0f0f5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:10px}
   header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #2a2a35;margin-bottom:10px}
-  .logo{color:#00e5ff;font-weight:bold;font-size:14px; letter-spacing: 1px;}
-  #status{font-size:11px;color:#6b6b80;background:#1a1a20;padding:4px 10px;border-radius:20px; transition: all 0.3s;}
-  #status.listening{color:#ff3d6e;border:1px solid #ff3d6e; box-shadow: 0 0 10px rgba(255,61,110,0.2);}
+  .logo{color:#00e5ff;font-weight:800;font-size:16px;letter-spacing:1.5px}
+  #status{font-size:11px;color:#6b6b80;background:#1a1a20;padding:5px 12px;border-radius:20px;transition:all .3s}
+  #status.listening{color:#ff3d6e;border:1px solid #ff3d6e;box-shadow:0 0 12px rgba(255,61,110,.25)}
   #status.playing{color:#00ff9d;border:1px solid #00ff9d}
-  
+
   .controls{display:flex;gap:8px;margin-bottom:10px}
-  button{flex:1;padding:16px;border-radius:12px;border:1px solid #2a2a35;background:#1a1a20;color:#f0f0f5;font-size:13px;font-weight:bold;cursor:pointer; transition: 0.2s;}
+  button{flex:1;padding:16px;border-radius:12px;border:1px solid #2a2a35;background:#1a1a20;color:#f0f0f5;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;touch-action:manipulation}
   #micBtn{border-color:#7c4dff;color:#7c4dff}
-  #micBtn.on{background:rgba(255,61,110,0.15);border-color:#ff3d6e;color:#ff3d6e; animation: pulse 2s infinite;}
-  @keyframes pulse{ 0%{opacity:1} 50%{opacity:0.7} 100%{opacity:1} }
-  
+  #micBtn.on{background:rgba(255,61,110,.15);border-color:#ff3d6e;color:#ff3d6e;animation:pulse 2s infinite}
+  @keyframes pulse{0%{opacity:1}50%{opacity:.6}100%{opacity:1}}
   #loadBtn{border-color:#00e5ff;color:#00e5ff;background:#05191C}
+
   input[type=file]{display:none}
-  
+
   .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-  .pad{background:#16161c;border:1px solid #2a2a35;border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:80px; position: relative;}
+  .pad{background:#16161c;border:1px solid #2a2a35;border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:80px;position:relative;transition:.15s;touch-action:manipulation}
   .pad.loaded{background:#1a1f2e;border-color:#3a4060}
-  .pad.playing{background:#0d2035;border-color:#00e5ff;box-shadow:0 0 15px rgba(0,229,255,0.3); transform: scale(1.02);}
-  
-  .num{width:28px;height:28px;border-radius:50%;background:#22222a;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#6b6b80}
-  .pad.loaded .num{background:rgba(124,77,255,0.3);color:#b39dff}
+  .pad.playing{background:#0d2035;border-color:#00e5ff;box-shadow:0 0 20px rgba(0,229,255,.35);transform:scale(1.03)}
+  .pad:active{transform:scale(.97)}
+
+  .num{width:32px;height:32px;border-radius:50%;background:#22222a;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#6b6b80;transition:.2s}
+  .pad.loaded .num{background:rgba(124,77,255,.25);color:#b39dff}
   .pad.playing .num{background:#00e5ff;color:#000}
-  
-  .name{font-size:11px;font-weight:bold;text-align:center; color: #a0a0b0}
-  .del{position:absolute;top:5px;right:8px;color:#444;font-size:14px;cursor:pointer}
-  .empty{color:#444;font-size:10px; margin-top: 10px;}
-  .info{font-size:12px;color:#00e5ff;padding:10px;background:rgba(0,229,255,0.05);border-radius:8px;margin-bottom:10px;border-left:3px solid #00e5ff}
+
+  .name{font-size:11px;font-weight:700;text-align:center;color:#a0a0b0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .del{position:absolute;top:6px;right:10px;color:#555;font-size:16px;cursor:pointer;padding:2px;line-height:1}
+  .del:hover{color:#ff3d6e}
+  .empty{color:#444;font-size:10px;margin-top:10px}
+  .info{font-size:12px;color:#00e5ff;padding:12px;background:rgba(0,229,255,.05);border-radius:10px;margin-bottom:12px;border-left:4px solid #00e5ff;line-height:1.6}
+  .log{font-size:11px;color:#666;margin-top:8px;font-family:monospace}
 </style>
 </head>
 <body>
@@ -44,10 +47,13 @@
   <div id="status">esperando...</div>
 </header>
 
-<div class="info" id="info">1. Carga audios numerados (Ej: 1_Efecto.mp3) <br> 2. Activa el micro y di el número.</div>
+<div class="info" id="info">
+  1. Carga audios numerados (Ej: 1_SFX.mp3)<br>
+  2. Activa el micro y di cualquier número cargado.
+</div>
 
 <div class="controls">
-  <button id="micBtn">🎤 Activar Escucha Continua</button>
+  <button id="micBtn">🎤 Activar Micro</button>
   <label style="flex:1">
     <button id="loadBtn" onclick="document.getElementById('fileInput').click()">📁 Cargar Audios</button>
     <input type="file" id="fileInput" accept="audio/*" multiple onchange="loadFiles(this.files)">
@@ -55,26 +61,40 @@
 </div>
 
 <div class="grid" id="grid"></div>
+<div class="log" id="log"></div>
 
 <script>
 const TOTAL = 50;
 const pads = Array.from({length:TOTAL},(_,i)=>({num:i+1,name:'',audio:null,url:null}));
 let recognition = null;
 let isListening = false;
+let isRestarting = false;       // BLOQUEA cascada de reinicios
+let processedResultIndex = -1;  // Evita reprocesar resultados viejos
 let debounceTimer = null;
-let lastTriggered = 0;
+let lastTriggeredNum = 0;
+let triggerCooldown = null;
 
-// Diccionario extendido para evitar errores de transcripción
+// ─── Diccionario numérico ───
 const numWords = {};
-const es = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis', 'veintisiete', 'veintiocho', 'veintinueve', 'treinta', 'treinta y uno', 'treinta y dos', 'treinta y tres', 'treinta y cuatro', 'treinta y cinco', 'treinta y seis', 'treinta y siete', 'treinta y ocho', 'treinta y nueve', 'cuarenta', 'cuarenta y uno', 'cuarenta y dos', 'cuarenta y tres', 'cuarenta y cuatro', 'cuarenta y cinco', 'cuarenta y seis', 'cuarenta y siete', 'cuarenta y ocho', 'cuarenta y nueve', 'cincuenta'];
+const es = ['',
+  'uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
+  'once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte',
+  'veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve','treinta',
+  'treinta y uno','treinta y dos','treinta y tres','treinta y cuatro','treinta y cinco','treinta y seis','treinta y siete','treinta y ocho','treinta y nueve','cuarenta',
+  'cuarenta y uno','cuarenta y dos','cuarenta y tres','cuarenta y cuatro','cuarenta y cinco','cuarenta y seis','cuarenta y siete','cuarenta y ocho','cuarenta y nueve','cincuenta'
+];
 
-// Mapeo de palabras a números
 for(let i=1; i<=50; i++){
   numWords[String(i)] = i;
   if(es[i]) numWords[es[i]] = i;
 }
-// Variaciones comunes de voz
-numWords['diez y seis'] = 16; numWords['diez y siete'] = 17; numWords['diez y ocho'] = 18; numWords['diez y nueve'] = 19;
+// Variaciones sin tilde y compuestos
+numWords['diez y seis']=16; numWords['diez y siete']=17; numWords['diez y ocho']=18; numWords['diez y nueve']=19;
+numWords['dieciseis']=16; numWords['diecisiete']=17; numWords['dieciocho']=18; numWords['diecinueve']=19;
+numWords['ventiuno']=21; numWords['ventidos']=22; numWords['ventitres']=23; numWords['venticuatro']=24;
+numWords['venticinco']=25; numWords['ventiseis']=26; numWords['ventisiete']=27; numWords['ventiocho']=28; numWords['ventinueve']=29;
+
+function log(msg){document.getElementById('log').textContent = '> ' + msg;}
 
 function extractSlot(name){const m=name.match(/^(\d+)[_.\-\s]/);return m?parseInt(m[1]):null}
 function cleanName(name){return name.replace(/\.[^.]+$/,'').replace(/^\d+[_.\-\s]+/,'').slice(0,15).trim()}
@@ -86,31 +106,42 @@ function loadFiles(files){
     if(slot && slot>=1 && slot<=TOTAL){
       if(pads[slot-1].url) URL.revokeObjectURL(pads[slot-1].url);
       const url = URL.createObjectURL(file);
-      pads[slot-1].audio = new Audio(url);
+      const a = new Audio(url);
+      a.preload = 'auto';
+      pads[slot-1].audio = a;
       pads[slot-1].url = url;
       pads[slot-1].name = cleanName(file.name);
       loaded++;
     }
   });
   render();
-  showInfo("✅ " + loaded + " audios listos.");
+  showInfo('✅ ' + loaded + ' audios listos. Di el número para reproducir.');
 }
 
+// ─── Reproducción robusta ───
 function playPad(i){
   const p = pads[i];
-  if(!p.audio) return;
+  if(!p?.audio) return;
 
-  // Si ya suena algo, lo reiniciamos (estilo trigger rápido)
-  p.audio.currentTime = 0;
-  p.audio.play().catch(e=>console.error(e));
+  // Si ya suena, lo reiniciamos limpio (re-trigger inmediato)
+  try{
+    p.audio.pause();
+    p.audio.currentTime = 0;
+    const playPromise = p.audio.play();
+    if(playPromise) playPromise.catch(()=>{});
+  }catch(e){return;}
 
+  // Visual
   const el = document.getElementById('pad-'+i);
   if(el){
+    el.classList.remove('playing');
+    void el.offsetWidth; // fuerza reflow para reiniciar animación si es necesario
     el.classList.add('playing');
-    p.audio.onended = () => el.classList.remove('playing');
-    setTimeout(() => el.classList.remove('playing'), 1000);
+    setTimeout(()=>el.classList.remove('playing'), 900);
   }
-  setStatus('▶ ' + p.num, 'playing');
+
+  setStatus('▶ ' + p.num + ' · ' + p.name, 'playing');
+  log('Reproducido: #' + p.num + ' "' + p.name + '"');
 }
 
 function render(){
@@ -121,16 +152,15 @@ function render(){
     d.className = 'pad' + (p.audio?' loaded':'');
     d.id = 'pad-'+i;
     d.innerHTML = `<div class="num">${p.num}</div>` + 
-      (p.audio ? `<div class="name">${p.name}</div><div class="del" onclick="clearPad(${i})">✕</div>` : `<div class="empty">—</div>`);
+      (p.audio ? `<div class="name">${p.name}</div><div class="del" onclick="event.stopPropagation();clearPad(${i})">✕</div>` : `<div class="empty">—</div>`);
     d.onclick = () => playPad(i);
     g.appendChild(d);
   });
 }
 
 function clearPad(i){
-  event.stopPropagation();
   if(pads[i].url) URL.revokeObjectURL(pads[i].url);
-  pads[i].audio = null; pads[i].url = null; pads[i].name = '';
+  pads[i] = {num:i+1, name:'', audio:null, url:null};
   render();
 }
 
@@ -142,6 +172,10 @@ function setStatus(msg,type){
 
 function showInfo(msg){document.getElementById('info').innerHTML = msg}
 
+// ═══════════════════════════════════════
+//  RECONOCIMIENTO DE VOZ - VERSIÓN FIJA
+// ═══════════════════════════════════════
+
 document.getElementById('micBtn').addEventListener('click', toggleMic);
 
 function toggleMic(){
@@ -150,83 +184,134 @@ function toggleMic(){
 
 function startMic(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){ showInfo('❌ Navegador no compatible.'); return; }
+  if(!SR){ showInfo('❌ Tu navegador no soporta reconocimiento de voz.'); return; }
+
+  // Si ya existe una instancia activa, no crear otra
+  if(recognition && isListening) return;
 
   recognition = new SR();
   recognition.lang = 'es-MX';
-  recognition.continuous = true;      // Mantener micro prendido
-  recognition.interimResults = true;   // Resultados mientras hablas para velocidad máxima
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
     isListening = true;
+    isRestarting = false;
     document.getElementById('micBtn').classList.add('on');
-    document.getElementById('micBtn').textContent = '🔴 Escucha Activa';
+    document.getElementById('micBtn').textContent = '🔴 Micro Activo';
     setStatus('escuchando...','listening');
+    log('Micro iniciado');
   };
 
   recognition.onresult = (e) => {
-    let transcript = '';
-    for (let i = e.resultIndex; i < e.results.length; ++i) {
-      transcript += e.results[i][0].transcript.toLowerCase();
-    }
+    // Solo procesamos resultados NUEVOS que no hayamos visto
+    for (let i = Math.max(e.resultIndex, processedResultIndex + 1); i < e.results.length; i++) {
+      if(e.results[i].isFinal){
+        const transcript = e.results[i][0].transcript.toLowerCase().trim();
+        processedResultIndex = i; // Marcamos como procesado
+        log('Escuchado: "' + transcript + '"');
 
-    // Debounce para esperar a palabras largas (evita que 10 gane a 16)
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      processVoice(transcript);
-    }, 200); // 200ms es el "punto dulce" entre velocidad y seguridad
+        // Debounce para dejar que termine de hablar
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          processVoice(transcript);
+        }, 250);
+      }
+    }
   };
 
   recognition.onerror = (e) => {
-    console.log("Error de SR:", e.error);
-    if(isListening && e.error !== 'aborted') restartMic();
+    // 'no-speech' y 'aborted' son normales, no reiniciar por ellos
+    if(e.error === 'no-speech' || e.error === 'aborted'){
+      log('Evento normal: ' + e.error);
+      return;
+    }
+    log('Error: ' + e.error);
+    // Solo reiniciar en errores reales
+    if(isListening && !isRestarting){
+      delayedRestart();
+    }
   };
 
   recognition.onend = () => {
-    if(isListening) restartMic(); // Si se apaga solo, lo revivimos
+    log('onend - isListening=' + isListening + ' restarting=' + isRestarting);
+    // Si aún queremos escuchar y no estamos ya reiniciando
+    if(isListening && !isRestarting){
+      delayedRestart();
+    }
   };
 
-  recognition.start();
+  try{
+    recognition.start();
+  }catch(e){
+    log('Error al start(): ' + e.message);
+  }
 }
 
-function restartMic(){
-  if(recognition) try{ recognition.abort(); } catch(e){}
-  setTimeout(() => { if(isListening) startMic(); }, 300);
+// Reinicio controlado SIN cascada
+function delayedRestart(){
+  if(isRestarting) return;
+  isRestarting = true;
+  log('Reiniciando en 400ms...');
+
+  setTimeout(() => {
+    if(isListening){
+      recognition = null; // Soltar referencia vieja
+      startMic();         // Crear instancia nueva limpia
+    }
+  }, 400);
 }
 
 function stopMic(){
   isListening = false;
-  if(recognition) recognition.abort();
+  isRestarting = false;
+  processedResultIndex = -1;
+  clearTimeout(debounceTimer);
+  if(recognition){
+    try{ recognition.abort(); } catch(e){}
+    recognition = null;
+  }
   document.getElementById('micBtn').classList.remove('on');
-  document.getElementById('micBtn').textContent = '🎤 Activar Escucha Continua';
-  setStatus('pausado','');
+  document.getElementById('micBtn').textContent = '🎤 Activar Micro';
+  setStatus('detenido','');
+  log('Micro detenido');
 }
 
 function processVoice(text){
-  // Ordenar llaves por longitud descendente (IMPORTANTE)
+  // Ordenar llaves por longitud descendente (dieciséis > diez)
   const keys = Object.keys(numWords).sort((a,b) => b.length - a.length);
-  
+
   let found = null;
+  let matchedWord = '';
   for(const k of keys){
     if(text.includes(k)){
       found = numWords[k];
-      break; 
+      matchedWord = k;
+      break;
     }
   }
 
-  if(found && found !== lastTriggered){
-    if(pads[found-1].audio){
-      playPad(found-1);
-      showInfo("Escuchado: <b>" + found + "</b>");
-      
-      // Limpiamos el reconocimiento para que no se acumule texto y se bugee
-      lastTriggered = found;
-      setTimeout(() => { lastTriggered = 0; }, 1000); // Cooldown de 1 seg para el mismo pad
-      restartMic(); 
-    }
+  if(!found) return;
+
+  // Cooldown de 1.2 seg para el mismo número (evita doblete)
+  if(found === lastTriggeredNum) return;
+
+  const padIdx = found - 1;
+  if(pads[padIdx]?.audio){
+    playPad(padIdx);
+    showInfo('✅ Escuchado: <b>#' + found + '</b> "' + matchedWord + '"<br><span style="font-size:10px;color:#888">Di otro número...</span>');
+
+    lastTriggeredNum = found;
+    clearTimeout(triggerCooldown);
+    triggerCooldown = setTimeout(() => { lastTriggeredNum = 0; }, 1200);
+  } else {
+    showInfo('⚠️ Slot #' + found + ' está vacío. Carga un audio ahí.');
+    log('Slot vacío: ' + found);
   }
 }
 
+// Inicializar
 render();
 </script>
 </body>
