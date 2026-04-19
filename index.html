@@ -144,7 +144,7 @@ function playPad(i) {
       setStatus('listo', '');
       isPlaying = false;
       if (isListening) {
-        setTimeout(() => { if (isListening) startMic(); }, 300);
+        setTimeout(() => { if (isListening) startMic(); }, 50);
       }
     };
   }
@@ -220,15 +220,15 @@ function startMic() {
       stopMic();
     } else if (e.error === 'no-speech') {
       showInfo('No se detectó voz. Intenta de nuevo.');
-      if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 400);
+      if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 50);
     } else {
-      if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 400);
+      if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 50);
     }
   };
 
   recognition.onend = () => {
     if (isListening && !isPlaying) {
-      setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 300);
+      setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 50);
     }
   };
 
@@ -262,11 +262,11 @@ function processText(text) {
       playPad(found-1);
     } else {
       showInfo('Slot ' + found + ' vacío');
-      if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 300);
+      if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 50);
     }
   } else {
     showInfo('❓ No reconocí número en: "' + text + '"');
-    if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 300);
+    if (isListening && !isPlaying) setTimeout(() => { if (isListening && !isPlaying) startMic(); }, 50);
   }
 }
 
