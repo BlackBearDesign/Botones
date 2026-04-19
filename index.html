@@ -31,6 +31,7 @@
     font-family: 'Outfit', sans-serif;
     min-height: 100vh;
     padding-bottom: 2rem;
+    -webkit-tap-highlight-color: transparent;
   }
 
   header {
@@ -109,6 +110,7 @@
     gap: 6px;
     transition: all 0.2s;
     letter-spacing: 0.3px;
+    touch-action: manipulation;
   }
 
   .btn:active { transform: scale(0.97); }
@@ -281,6 +283,13 @@
     text-transform: uppercase;
     padding: 0.6rem 1rem 0.4rem;
   }
+  
+  .debug-info {
+    font-size: 10px;
+    color: var(--muted);
+    padding: 0.5rem 1rem;
+    font-family: 'Space Mono', monospace;
+  }
 </style>
 </head>
 <body>
@@ -304,6 +313,7 @@
 
 <div class="section-label">50 slots — di el número para activar</div>
 <div class="grid" id="grid"></div>
+<div class="debug-info" id="debugInfo">Toca "Activar micrófono" y permite el acceso</div>
 
 <script>
 const TOTAL = 50;
@@ -312,8 +322,9 @@ let recognition = null;
 let isListening = false;
 let currentAudio = null;
 let currentPadEl = null;
+let restartTimeout = null;
 
-// Números en español e inglés
+// Números en español
 const numWords = {};
 const es = ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
   'once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte',
@@ -332,7 +343,6 @@ for (let i = 1; i <= 50; i++) {
   if (esAlt[i]) numWords[esAlt[i]] = i;
 }
 
-// Detectar número desde nombre de archivo: "1_nombre.mp3" → slot 1
 function slotFromFilename(name) {
   const m = name.match(/^(\d+)[_.\-\s]/);
   if (m) {
@@ -342,11 +352,10 @@ function slotFromFilename(name) {
   return null;
 }
 
-// Extraer nombre limpio: "3_explosion.mp3" → "explosion"
 function cleanName(filename) {
   return filename
-    .replace(/\.[^.]+$/, '')       // quitar extensión
-    .replace(/^\d+[_.\-\s]+/, '')  // quitar número inicial y separador
+    .replace(/\.[^.]+$/, '')
+    .replace(/^\d+[_.\-\s]+/, '')
     .slice(0, 20)
     .trim();
 }
@@ -366,6 +375,7 @@ function bulkLoad(files) {
   });
   render();
   setStatus('✓ ' + loaded + ' audios cargados', 'playing');
+  updateDebug('Cargados: ' + loaded + ' archivos');
 }
 
 function loadSingle(i, file) {
@@ -401,6 +411,7 @@ function playPad(i) {
     pad.audio.onended = () => { el.classList.remove('playing'); currentPadEl = null; setStatus('listo', ''); };
   }
   setStatus('▶ ' + pad.num + (pad.name ? ' — ' + pad.name : ''), 'playing');
+  updateDebug('Reproduciendo: ' + pad.num + ' ' + pad.name);
 }
 
 function render() {
@@ -471,109 +482,173 @@ function setStatus(msg, type) {
   pill.className = 'status-pill' + (type ? ' ' + type : '');
 }
 
-function toggleMic() { isListening ? stopMic() : startMic(); }
+function updateDebug(msg) {
+  const debug = document.getElementById('debugInfo');
+  if (debug) debug.textContent = msg;
+}
+
+function toggleMic() { 
+  if (isListening) {
+    stopMic();
+  } else {
+    startMic();
+  }
+}
 
 function startMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { setStatus('usa Chrome'); return; }
+  if (!SR) { 
+    setStatus('Navegador no soportado'); 
+    updateDebug('Usa Chrome en Android');
+    return; 
+  }
+
+  // Limpiar timeout anterior si existe
+  if (restartTimeout) {
+    clearTimeout(restartTimeout);
+    restartTimeout = null;
+  }
 
   recognition = new SR();
   recognition.lang = 'es-MX';
-  recognition.continuous = true;
-  recognition.interimResults = true; // Cambiado a true para mejor detección
+  // CRÍTICO PARA MÓVIL: continuous = false, interimResults = true
+  recognition.continuous = false; 
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  let finalTranscript = '';
+  let hasResult = false;
 
   recognition.onresult = (e) => {
-    // Obtener el resultado final (no intermedio)
-    const lastResult = e.results[e.results.length - 1];
-    if (!lastResult.isFinal) return; // Solo procesar resultados finales
+    hasResult = true;
+    let interimTranscript = '';
     
-    const text = lastResult[0].transcript.trim().toLowerCase();
-    setStatus('"' + text + '"', 'listening');
-
-    // Buscar números en el texto de forma más robusta
-    let detectedNum = null;
-    
-    // Primero buscar números compuestos (más largos primero)
-    const keys = Object.keys(numWords).sort((a,b) => b.length - a.length);
-    
-    for (const key of keys) {
-      // Usar word boundary para evitar coincidencias parciales
-      const regex = new RegExp('\\b' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
-      if (regex.test(text) || text.includes(key)) {
-        detectedNum = numWords[key];
-        break;
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const transcript = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        finalTranscript += transcript;
+      } else {
+        interimTranscript += transcript;
       }
     }
     
-    if (detectedNum !== null && detectedNum >= 1 && detectedNum <= TOTAL) {
-      if (pads[detectedNum-1].audio) {
-        playPad(detectedNum-1);
-      } else {
-        setStatus('slot ' + detectedNum + ' vacío', '');
-      }
+    const text = (finalTranscript || interimTranscript).toLowerCase().trim();
+    setStatus('"' + text + '"', 'listening');
+    updateDebug('Escuchado: ' + text);
+    
+    // Procesar inmediatamente si es final
+    if (finalTranscript) {
+      processVoiceCommand(finalTranscript.toLowerCase().trim());
     }
   };
 
   recognition.onerror = (e) => {
-    console.error('Speech recognition error:', e.error);
-    if (e.error === 'not-allowed') setStatus('permiso denegado');
-    else if (e.error === 'no-speech') {
-      // No hacer nada, es normal cuando no hay sonido
-      setStatus('● escuchando', 'listening');
-    }
-    else setStatus('error: ' + e.error);
-    
-    // Reiniciar automáticamente en caso de error no fatal
-    if (e.error !== 'not-allowed' && e.error !== 'service-not-allowed' && isListening) {
-      setTimeout(() => {
-        if (isListening) {
-          try {
-            recognition.start();
-          } catch(err) {
-            console.error('Error reiniciando:', err);
-          }
-        }
-      }, 500);
+    console.error('Error:', e.error);
+    if (e.error === 'not-allowed') {
+      setStatus('Permiso denegado');
+      updateDebug('Permite el micrófono en configuración');
+      stopMic();
+    } else if (e.error === 'no-speech') {
+      // Normal en móvil, reiniciar
+      updateDebug('No se detectó voz, reiniciando...');
+      scheduleRestart();
+    } else if (e.error === 'network') {
+      updateDebug('Error de red, reiniciando...');
+      scheduleRestart();
+    } else {
+      updateDebug('Error: ' + e.error);
+      scheduleRestart();
     }
   };
 
-  recognition.onend = () => { 
-    // Solo reiniciar si todavía deberíamos estar escuchando
+  recognition.onend = () => {
+    updateDebug('Sesión terminada, reiniciando...');
+    // Siempre reiniciar en móvil a menos que el usuario haya detenido
     if (isListening) {
-      setTimeout(() => {
-        try {
-          recognition.start();
-        } catch(err) {
-          console.error('Error al reiniciar:', err);
-        }
-      }, 100);
+      scheduleRestart();
     }
   };
-  
+
   try {
     recognition.start();
     isListening = true;
-
+    
     const btn = document.getElementById('micBtn');
     btn.classList.add('on');
     document.getElementById('micDot').classList.add('pulse');
     document.getElementById('micLabel').textContent = 'Escuchando...';
     setStatus('● escuchando', 'listening');
+    updateDebug('Mic activo - di un número');
   } catch(err) {
-    setStatus('error al iniciar: ' + err.message);
+    setStatus('Error al iniciar');
+    updateDebug('Error: ' + err.message);
     console.error(err);
   }
 }
 
+function processVoiceCommand(text) {
+  updateDebug('Procesando: ' + text);
+  
+  // Buscar números - ordenar por longitud descendente para capturar compuestos primero
+  const keys = Object.keys(numWords).sort((a,b) => b.length - a.length);
+  let foundNum = null;
+  
+  for (const key of keys) {
+    if (text.includes(key)) {
+      foundNum = numWords[key];
+      break;
+    }
+  }
+  
+  if (foundNum !== null && foundNum >= 1 && foundNum <= TOTAL) {
+    updateDebug('Número detectado: ' + foundNum);
+    if (pads[foundNum-1].audio) {
+      playPad(foundNum-1);
+    } else {
+      setStatus('Slot ' + foundNum + ' vacío');
+      updateDebug('Slot ' + foundNum + ' está vacío');
+    }
+  } else {
+    updateDebug('No se detectó número válido');
+  }
+}
+
+function scheduleRestart() {
+  if (!isListening) return;
+  
+  // Limpiar timeout anterior
+  if (restartTimeout) clearTimeout(restartTimeout);
+  
+  // Reiniciar después de un pequeño delay
+  restartTimeout = setTimeout(() => {
+    if (isListening && recognition) {
+      try {
+        recognition.stop();
+      } catch(e) {}
+      
+      // Crear nueva instancia
+      setTimeout(() => {
+        if (isListening) startMic();
+      }, 200);
+    }
+  }, 100);
+}
+
 function stopMic() {
-  isListening = false; // Primero marcar como no escuchando
+  isListening = false;
+  
+  if (restartTimeout) {
+    clearTimeout(restartTimeout);
+    restartTimeout = null;
+  }
+  
   if (recognition) { 
     try {
       recognition.stop(); 
+      recognition = null;
     } catch(e) {
       console.error('Error al detener:', e);
     }
-    recognition = null; 
   }
   
   const btn = document.getElementById('micBtn');
@@ -581,6 +656,7 @@ function stopMic() {
   document.getElementById('micDot').classList.remove('pulse');
   document.getElementById('micLabel').textContent = 'Activar micrófono';
   setStatus('listo', '');
+  updateDebug('Mic detenido');
 }
 
 render();
