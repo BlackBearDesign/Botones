@@ -2,316 +2,587 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>VozBoard Pro - v2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Botonera de Voz</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#0e0e11;color:#f0f0f5;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:10px}
-  header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #2a2a35;margin-bottom:10px}
-  .logo{color:#00e5ff;font-weight:800;font-size:16px;letter-spacing:1.5px}
-  #status{font-size:11px;color:#6b6b80;background:#1a1a20;padding:5px 12px;border-radius:20px;transition:all .3s}
-  #status.listening{color:#ff3d6e;border:1px solid #ff3d6e;box-shadow:0 0 12px rgba(255,61,110,.25)}
-  #status.playing{color:#00ff9d;border:1px solid #00ff9d}
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;600;700&display=swap');
 
-  .controls{display:flex;gap:8px;margin-bottom:10px}
-  button{flex:1;padding:16px;border-radius:12px;border:1px solid #2a2a35;background:#1a1a20;color:#f0f0f5;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;touch-action:manipulation}
-  #micBtn{border-color:#7c4dff;color:#7c4dff}
-  #micBtn.on{background:rgba(255,61,110,.15);border-color:#ff3d6e;color:#ff3d6e;animation:pulse 2s infinite}
-  @keyframes pulse{0%{opacity:1}50%{opacity:.6}100%{opacity:1}}
-  #loadBtn{border-color:#00e5ff;color:#00e5ff;background:#05191C}
+  :root {
+    --bg: #0e0e11;
+    --surface: #1a1a20;
+    --surface2: #22222a;
+    --accent: #00e5ff;
+    --accent2: #7c4dff;
+    --text: #f0f0f5;
+    --muted: #6b6b80;
+    --border: #2a2a35;
+    --green: #00ff9d;
+    --red: #ff3d6e;
+    --pad-empty: #16161c;
+    --pad-loaded: #1a1f2e;
+    --pad-playing: #0d2035;
+  }
 
-  input[type=file]{display:none}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-  .pad{background:#16161c;border:1px solid #2a2a35;border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:80px;position:relative;transition:.15s;touch-action:manipulation}
-  .pad.loaded{background:#1a1f2e;border-color:#3a4060}
-  .pad.playing{background:#0d2035;border-color:#00e5ff;box-shadow:0 0 20px rgba(0,229,255,.35);transform:scale(1.03)}
-  .pad:active{transform:scale(.97)}
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 2rem;
+  }
 
-  .num{width:32px;height:32px;border-radius:50%;background:#22222a;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#6b6b80;transition:.2s}
-  .pad.loaded .num{background:rgba(124,77,255,.25);color:#b39dff}
-  .pad.playing .num{background:#00e5ff;color:#000}
+  header {
+    padding: 1.2rem 1rem 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
 
-  .name{font-size:11px;font-weight:700;text-align:center;color:#a0a0b0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .del{position:absolute;top:6px;right:10px;color:#555;font-size:16px;cursor:pointer;padding:2px;line-height:1}
-  .del:hover{color:#ff3d6e}
-  .empty{color:#444;font-size:10px;margin-top:10px}
-  .info{font-size:12px;color:#00e5ff;padding:12px;background:rgba(0,229,255,.05);border-radius:10px;margin-bottom:12px;border-left:4px solid #00e5ff;line-height:1.6}
-  .log{font-size:11px;color:#666;margin-top:8px;font-family:monospace}
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .logo span { color: var(--muted); }
+
+  .status-pill {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: var(--surface);
+    transition: all 0.3s;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .status-pill.listening {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(255,61,110,0.1);
+    animation: blink 1.2s infinite;
+  }
+
+  .status-pill.playing {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(0,255,157,0.08);
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  .controls {
+    padding: 0.8rem 1rem;
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-mic {
+    background: var(--surface2);
+    border-color: var(--accent2);
+    color: var(--accent);
+  }
+
+  .btn-mic.on {
+    background: rgba(255,61,110,0.15);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .btn-load {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.05);
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  .dot.pulse { animation: blink 1s infinite; }
+
+  input[type=file] { display: none; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 1rem;
+  }
+
+  .pad {
+    background: var(--pad-empty);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    min-height: 88px;
+    cursor: default;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .pad.loaded {
+    background: var(--pad-loaded);
+    border-color: #2a3050;
+  }
+
+  .pad.playing {
+    background: var(--pad-playing);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(0,229,255,0.15);
+  }
+
+  .pad-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .pad.loaded .pad-num { background: rgba(124,77,255,0.3); color: #b39dff; }
+  .pad.playing .pad-num { background: var(--accent); color: #000; }
+
+  .pad-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+    word-break: break-word;
+    line-height: 1.3;
+    max-width: 100%;
+  }
+
+  .pad-empty-label {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .pad-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .pad-play {
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 20px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .pad-play:active { background: rgba(0,229,255,0.2); }
+
+  .pad-del {
+    position: absolute;
+    top: 5px; right: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px;
+  }
+
+  .pad-del:hover { color: var(--red); }
+
+  .upload-lbl {
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    padding: 2px 8px;
+    cursor: pointer;
+  }
+
+  .upload-lbl:hover { border-color: var(--accent); color: var(--accent); }
+
+  .wavebar {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    height: 16px;
+  }
+
+  .wavebar span {
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+    animation: wave 0.8s ease-in-out infinite;
+  }
+
+  .wavebar span:nth-child(2) { animation-delay: 0.15s; }
+  .wavebar span:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes wave {
+    0%,100% { height: 4px; }
+    50% { height: 14px; }
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 0.6rem 1rem 0.4rem;
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">VOZBOARD PRO</div>
-  <div id="status">esperando...</div>
+  <div class="logo">VOZ<span>BOARD</span></div>
+  <div class="status-pill" id="statusPill">listo</div>
 </header>
 
-<div class="info" id="info">
-  1. Carga audios numerados (Ej: 1_SFX.mp3)<br>
-  2. Activa el micro y di cualquier número cargado.
-</div>
-
 <div class="controls">
-  <button id="micBtn">🎤 Activar Micro</button>
-  <label style="flex:1">
-    <button id="loadBtn" onclick="document.getElementById('fileInput').click()">📁 Cargar Audios</button>
-    <input type="file" id="fileInput" accept="audio/*" multiple onchange="loadFiles(this.files)">
+  <button class="btn btn-mic" id="micBtn" onclick="toggleMic()">
+    <div class="dot" id="micDot"></div>
+    <span id="micLabel">Activar micrófono</span>
+  </button>
+  <label class="btn btn-load" title="Carga todos tus audios de jalón">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Cargar todos
+    <input type="file" id="bulkInput" accept="audio/*" multiple onchange="bulkLoad(this.files)">
   </label>
 </div>
 
+<div class="section-label">50 slots — di el número para activar</div>
 <div class="grid" id="grid"></div>
-<div class="log" id="log"></div>
 
 <script>
 const TOTAL = 50;
-const pads = Array.from({length:TOTAL},(_,i)=>({num:i+1,name:'',audio:null,url:null}));
+const pads = Array.from({length: TOTAL}, (_, i) => ({ num: i+1, name: '', audio: null, url: null }));
 let recognition = null;
 let isListening = false;
-let isRestarting = false;       // BLOQUEA cascada de reinicios
-let processedResultIndex = -1;  // Evita reprocesar resultados viejos
-let debounceTimer = null;
-let lastTriggeredNum = 0;
-let triggerCooldown = null;
+let currentAudio = null;
+let currentPadEl = null;
 
-// ─── Diccionario numérico ───
+// Números en español e inglés
 const numWords = {};
-const es = ['',
-  'uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
+const es = ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
   'once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte',
   'veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve','treinta',
   'treinta y uno','treinta y dos','treinta y tres','treinta y cuatro','treinta y cinco','treinta y seis','treinta y siete','treinta y ocho','treinta y nueve','cuarenta',
-  'cuarenta y uno','cuarenta y dos','cuarenta y tres','cuarenta y cuatro','cuarenta y cinco','cuarenta y seis','cuarenta y siete','cuarenta y ocho','cuarenta y nueve','cincuenta'
-];
+  'cuarenta y uno','cuarenta y dos','cuarenta y tres','cuarenta y cuatro','cuarenta y cinco','cuarenta y seis','cuarenta y siete','cuarenta y ocho','cuarenta y nueve','cincuenta'];
+const esAlt = ['','un','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
+  'once','doce','trece','catorce','quince','dieciseis','diecisiete','dieciocho','diecinueve','veinte',
+  'veintiuno','veintidos','veintitres','veinticuatro','veinticinco','veintiseis','veintisiete','veintiocho','veintinueve','treinta',
+  'treinta y uno','treinta y dos','treinta y tres','treinta y cuatro','treinta y cinco','treinta y seis','treinta y siete','treinta y ocho','treinta y nueve','cuarenta',
+  'cuarenta y uno','cuarenta y dos','cuarenta y tres','cuarenta y cuatro','cuarenta y cinco','cuarenta y seis','cuarenta y siete','cuarenta y ocho','cuarenta y nueve','cincuenta'];
 
-for(let i=1; i<=50; i++){
+for (let i = 1; i <= 50; i++) {
   numWords[String(i)] = i;
-  if(es[i]) numWords[es[i]] = i;
+  if (es[i]) numWords[es[i]] = i;
+  if (esAlt[i]) numWords[esAlt[i]] = i;
 }
-// Variaciones sin tilde y compuestos
-numWords['diez y seis']=16; numWords['diez y siete']=17; numWords['diez y ocho']=18; numWords['diez y nueve']=19;
-numWords['dieciseis']=16; numWords['diecisiete']=17; numWords['dieciocho']=18; numWords['diecinueve']=19;
-numWords['ventiuno']=21; numWords['ventidos']=22; numWords['ventitres']=23; numWords['venticuatro']=24;
-numWords['venticinco']=25; numWords['ventiseis']=26; numWords['ventisiete']=27; numWords['ventiocho']=28; numWords['ventinueve']=29;
 
-function log(msg){document.getElementById('log').textContent = '> ' + msg;}
+// Detectar número desde nombre de archivo: "1_nombre.mp3" → slot 1
+function slotFromFilename(name) {
+  const m = name.match(/^(\d+)[_.\-\s]/);
+  if (m) {
+    const n = parseInt(m[1]);
+    if (n >= 1 && n <= TOTAL) return n - 1;
+  }
+  return null;
+}
 
-function extractSlot(name){const m=name.match(/^(\d+)[_.\-\s]/);return m?parseInt(m[1]):null}
-function cleanName(name){return name.replace(/\.[^.]+$/,'').replace(/^\d+[_.\-\s]+/,'').slice(0,15).trim()}
+// Extraer nombre limpio: "3_explosion.mp3" → "explosion"
+function cleanName(filename) {
+  return filename
+    .replace(/\.[^.]+$/, '')       // quitar extensión
+    .replace(/^\d+[_.\-\s]+/, '')  // quitar número inicial y separador
+    .slice(0, 20)
+    .trim();
+}
 
-function loadFiles(files){
+function bulkLoad(files) {
   let loaded = 0;
-  Array.from(files).forEach(file=>{
-    const slot = extractSlot(file.name);
-    if(slot && slot>=1 && slot<=TOTAL){
-      if(pads[slot-1].url) URL.revokeObjectURL(pads[slot-1].url);
+  Array.from(files).forEach(file => {
+    const idx = slotFromFilename(file.name);
+    if (idx !== null) {
+      if (pads[idx].url) URL.revokeObjectURL(pads[idx].url);
       const url = URL.createObjectURL(file);
-      const a = new Audio(url);
-      a.preload = 'auto';
-      pads[slot-1].audio = a;
-      pads[slot-1].url = url;
-      pads[slot-1].name = cleanName(file.name);
+      pads[idx].audio = new Audio(url);
+      pads[idx].url = url;
+      pads[idx].name = cleanName(file.name) || file.name.replace(/\.[^.]+$/, '').slice(0,18);
       loaded++;
     }
   });
   render();
-  showInfo('✅ ' + loaded + ' audios listos. Di el número para reproducir.');
+  setStatus('✓ ' + loaded + ' audios cargados', 'playing');
 }
 
-// ─── Reproducción robusta ───
-function playPad(i){
-  const p = pads[i];
-  if(!p?.audio) return;
-
-  // Si ya suena, lo reiniciamos limpio (re-trigger inmediato)
-  try{
-    p.audio.pause();
-    p.audio.currentTime = 0;
-    const playPromise = p.audio.play();
-    if(playPromise) playPromise.catch(()=>{});
-  }catch(e){return;}
-
-  // Visual
-  const el = document.getElementById('pad-'+i);
-  if(el){
-    el.classList.remove('playing');
-    void el.offsetWidth; // fuerza reflow para reiniciar animación si es necesario
-    el.classList.add('playing');
-    setTimeout(()=>el.classList.remove('playing'), 900);
-  }
-
-  setStatus('▶ ' + p.num + ' · ' + p.name, 'playing');
-  log('Reproducido: #' + p.num + ' "' + p.name + '"');
-}
-
-function render(){
-  const g = document.getElementById('grid');
-  g.innerHTML = '';
-  pads.forEach((p,i)=>{
-    const d = document.createElement('div');
-    d.className = 'pad' + (p.audio?' loaded':'');
-    d.id = 'pad-'+i;
-    d.innerHTML = `<div class="num">${p.num}</div>` + 
-      (p.audio ? `<div class="name">${p.name}</div><div class="del" onclick="event.stopPropagation();clearPad(${i})">✕</div>` : `<div class="empty">—</div>`);
-    d.onclick = () => playPad(i);
-    g.appendChild(d);
-  });
-}
-
-function clearPad(i){
-  if(pads[i].url) URL.revokeObjectURL(pads[i].url);
-  pads[i] = {num:i+1, name:'', audio:null, url:null};
+function loadSingle(i, file) {
+  if (!file) return;
+  if (pads[i].url) URL.revokeObjectURL(pads[i].url);
+  const url = URL.createObjectURL(file);
+  pads[i].audio = new Audio(url);
+  pads[i].url = url;
+  pads[i].name = cleanName(file.name) || file.name.replace(/\.[^.]+$/, '').slice(0,18);
   render();
 }
 
-function setStatus(msg,type){
-  const s = document.getElementById('status');
-  s.textContent = msg;
-  s.className = type || '';
+function clearPad(i) {
+  if (pads[i].url) URL.revokeObjectURL(pads[i].url);
+  pads[i].audio = null; pads[i].url = null; pads[i].name = '';
+  render();
 }
 
-function showInfo(msg){document.getElementById('info').innerHTML = msg}
-
-// ═══════════════════════════════════════
-//  RECONOCIMIENTO DE VOZ - VERSIÓN FIJA
-// ═══════════════════════════════════════
-
-document.getElementById('micBtn').addEventListener('click', toggleMic);
-
-function toggleMic(){
-  if(isListening){ stopMic(); } else { startMic(); }
+function playPad(i) {
+  const pad = pads[i];
+  if (!pad.audio) return;
+  if (currentAudio && !currentAudio.paused) {
+    currentAudio.pause(); currentAudio.currentTime = 0;
+  }
+  if (currentPadEl) currentPadEl.classList.remove('playing');
+  pad.audio.currentTime = 0;
+  pad.audio.play();
+  currentAudio = pad.audio;
+  const el = document.getElementById('pad-' + i);
+  if (el) {
+    el.classList.add('playing');
+    currentPadEl = el;
+    pad.audio.onended = () => { el.classList.remove('playing'); currentPadEl = null; setStatus('listo', ''); };
+  }
+  setStatus('▶ ' + pad.num + (pad.name ? ' — ' + pad.name : ''), 'playing');
 }
 
-function startMic(){
+function render() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  pads.forEach((pad, i) => {
+    const div = document.createElement('div');
+    div.className = 'pad' + (pad.audio ? ' loaded' : '');
+    div.id = 'pad-' + i;
+
+    const numDiv = document.createElement('div');
+    numDiv.className = 'pad-num';
+    numDiv.textContent = pad.num;
+    div.appendChild(numDiv);
+
+    if (pad.audio) {
+      if (pad.name) {
+        const nm = document.createElement('div');
+        nm.className = 'pad-name';
+        nm.textContent = pad.name;
+        div.appendChild(nm);
+      }
+
+      const wave = document.createElement('div');
+      wave.className = 'wavebar';
+      wave.innerHTML = '<span></span><span></span><span></span>';
+      wave.style.display = 'none';
+      wave.id = 'wave-' + i;
+      div.appendChild(wave);
+
+      const actions = document.createElement('div');
+      actions.className = 'pad-actions';
+      const pb = document.createElement('div');
+      pb.className = 'pad-play';
+      pb.textContent = '▶ play';
+      pb.onclick = () => playPad(i);
+      actions.appendChild(pb);
+      div.appendChild(actions);
+
+      const del = document.createElement('div');
+      del.className = 'pad-del';
+      del.textContent = '✕';
+      del.onclick = (e) => { e.stopPropagation(); clearPad(i); };
+      div.appendChild(del);
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'pad-empty-label';
+      empty.textContent = 'vacío';
+      div.appendChild(empty);
+
+      const label = document.createElement('label');
+      label.className = 'upload-lbl';
+      label.textContent = '+ audio';
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = 'audio/*';
+      inp.onchange = (e) => loadSingle(i, e.target.files[0]);
+      label.appendChild(inp);
+      div.appendChild(label);
+    }
+    grid.appendChild(div);
+  });
+}
+
+function setStatus(msg, type) {
+  const pill = document.getElementById('statusPill');
+  pill.textContent = msg;
+  pill.className = 'status-pill' + (type ? ' ' + type : '');
+}
+
+function toggleMic() { isListening ? stopMic() : startMic(); }
+
+function startMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){ showInfo('❌ Tu navegador no soporta reconocimiento de voz.'); return; }
-
-  // Si ya existe una instancia activa, no crear otra
-  if(recognition && isListening) return;
+  if (!SR) { setStatus('usa Chrome'); return; }
 
   recognition = new SR();
   recognition.lang = 'es-MX';
   recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.maxAlternatives = 1;
-
-  recognition.onstart = () => {
-    isListening = true;
-    isRestarting = false;
-    document.getElementById('micBtn').classList.add('on');
-    document.getElementById('micBtn').textContent = '🔴 Micro Activo';
-    setStatus('escuchando...','listening');
-    log('Micro iniciado');
-  };
+  recognition.interimResults = true; // Cambiado a true para mejor detección
 
   recognition.onresult = (e) => {
-    // Solo procesamos resultados NUEVOS que no hayamos visto
-    for (let i = Math.max(e.resultIndex, processedResultIndex + 1); i < e.results.length; i++) {
-      if(e.results[i].isFinal){
-        const transcript = e.results[i][0].transcript.toLowerCase().trim();
-        processedResultIndex = i; // Marcamos como procesado
-        log('Escuchado: "' + transcript + '"');
+    // Obtener el resultado final (no intermedio)
+    const lastResult = e.results[e.results.length - 1];
+    if (!lastResult.isFinal) return; // Solo procesar resultados finales
+    
+    const text = lastResult[0].transcript.trim().toLowerCase();
+    setStatus('"' + text + '"', 'listening');
 
-        // Debounce para dejar que termine de hablar
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          processVoice(transcript);
-        }, 250);
+    // Buscar números en el texto de forma más robusta
+    let detectedNum = null;
+    
+    // Primero buscar números compuestos (más largos primero)
+    const keys = Object.keys(numWords).sort((a,b) => b.length - a.length);
+    
+    for (const key of keys) {
+      // Usar word boundary para evitar coincidencias parciales
+      const regex = new RegExp('\\b' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
+      if (regex.test(text) || text.includes(key)) {
+        detectedNum = numWords[key];
+        break;
+      }
+    }
+    
+    if (detectedNum !== null && detectedNum >= 1 && detectedNum <= TOTAL) {
+      if (pads[detectedNum-1].audio) {
+        playPad(detectedNum-1);
+      } else {
+        setStatus('slot ' + detectedNum + ' vacío', '');
       }
     }
   };
 
   recognition.onerror = (e) => {
-    // 'no-speech' y 'aborted' son normales, no reiniciar por ellos
-    if(e.error === 'no-speech' || e.error === 'aborted'){
-      log('Evento normal: ' + e.error);
-      return;
+    console.error('Speech recognition error:', e.error);
+    if (e.error === 'not-allowed') setStatus('permiso denegado');
+    else if (e.error === 'no-speech') {
+      // No hacer nada, es normal cuando no hay sonido
+      setStatus('● escuchando', 'listening');
     }
-    log('Error: ' + e.error);
-    // Solo reiniciar en errores reales
-    if(isListening && !isRestarting){
-      delayedRestart();
+    else setStatus('error: ' + e.error);
+    
+    // Reiniciar automáticamente en caso de error no fatal
+    if (e.error !== 'not-allowed' && e.error !== 'service-not-allowed' && isListening) {
+      setTimeout(() => {
+        if (isListening) {
+          try {
+            recognition.start();
+          } catch(err) {
+            console.error('Error reiniciando:', err);
+          }
+        }
+      }, 500);
     }
   };
 
-  recognition.onend = () => {
-    log('onend - isListening=' + isListening + ' restarting=' + isRestarting);
-    // Si aún queremos escuchar y no estamos ya reiniciando
-    if(isListening && !isRestarting){
-      delayedRestart();
+  recognition.onend = () => { 
+    // Solo reiniciar si todavía deberíamos estar escuchando
+    if (isListening) {
+      setTimeout(() => {
+        try {
+          recognition.start();
+        } catch(err) {
+          console.error('Error al reiniciar:', err);
+        }
+      }, 100);
     }
   };
-
-  try{
+  
+  try {
     recognition.start();
-  }catch(e){
-    log('Error al start(): ' + e.message);
+    isListening = true;
+
+    const btn = document.getElementById('micBtn');
+    btn.classList.add('on');
+    document.getElementById('micDot').classList.add('pulse');
+    document.getElementById('micLabel').textContent = 'Escuchando...';
+    setStatus('● escuchando', 'listening');
+  } catch(err) {
+    setStatus('error al iniciar: ' + err.message);
+    console.error(err);
   }
 }
 
-// Reinicio controlado SIN cascada
-function delayedRestart(){
-  if(isRestarting) return;
-  isRestarting = true;
-  log('Reiniciando en 400ms...');
-
-  setTimeout(() => {
-    if(isListening){
-      recognition = null; // Soltar referencia vieja
-      startMic();         // Crear instancia nueva limpia
+function stopMic() {
+  isListening = false; // Primero marcar como no escuchando
+  if (recognition) { 
+    try {
+      recognition.stop(); 
+    } catch(e) {
+      console.error('Error al detener:', e);
     }
-  }, 400);
+    recognition = null; 
+  }
+  
+  const btn = document.getElementById('micBtn');
+  btn.classList.remove('on');
+  document.getElementById('micDot').classList.remove('pulse');
+  document.getElementById('micLabel').textContent = 'Activar micrófono';
+  setStatus('listo', '');
 }
 
-function stopMic(){
-  isListening = false;
-  isRestarting = false;
-  processedResultIndex = -1;
-  clearTimeout(debounceTimer);
-  if(recognition){
-    try{ recognition.abort(); } catch(e){}
-    recognition = null;
-  }
-  document.getElementById('micBtn').classList.remove('on');
-  document.getElementById('micBtn').textContent = '🎤 Activar Micro';
-  setStatus('detenido','');
-  log('Micro detenido');
-}
-
-function processVoice(text){
-  // Ordenar llaves por longitud descendente (dieciséis > diez)
-  const keys = Object.keys(numWords).sort((a,b) => b.length - a.length);
-
-  let found = null;
-  let matchedWord = '';
-  for(const k of keys){
-    if(text.includes(k)){
-      found = numWords[k];
-      matchedWord = k;
-      break;
-    }
-  }
-
-  if(!found) return;
-
-  // Cooldown de 1.2 seg para el mismo número (evita doblete)
-  if(found === lastTriggeredNum) return;
-
-  const padIdx = found - 1;
-  if(pads[padIdx]?.audio){
-    playPad(padIdx);
-    showInfo('✅ Escuchado: <b>#' + found + '</b> "' + matchedWord + '"<br><span style="font-size:10px;color:#888">Di otro número...</span>');
-
-    lastTriggeredNum = found;
-    clearTimeout(triggerCooldown);
-    triggerCooldown = setTimeout(() => { lastTriggeredNum = 0; }, 1200);
-  } else {
-    showInfo('⚠️ Slot #' + found + ' está vacío. Carga un audio ahí.');
-    log('Slot vacío: ' + found);
-  }
-}
-
-// Inicializar
 render();
 </script>
 </body>
