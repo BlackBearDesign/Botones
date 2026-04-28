@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0e0e11">
 <title>Botonera Voz</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -33,7 +32,6 @@
   .del{position:absolute;top:5px;right:8px;color:#6b6b80;font-size:14px;cursor:pointer}
   .empty{color:#6b6b80;font-size:11px}
   .info{font-size:12px;color:#6b6b80;padding:10px;background:#1a1a20;border-radius:8px;margin-bottom:10px;border-left:3px solid #00e5ff}
-  #wakeLockStatus{font-size:10px;color:#444;margin-top:4px;text-align:center}
 </style>
 </head>
 <body>
@@ -52,20 +50,14 @@
 </div>
 
 <div class="info" id="info">Carga audios tipo "1_sonido.mp3" y di el número para reproducir</div>
-<div id="wakeLockStatus"></div>
 
 <div class="grid" id="grid"></div>
-
-<!-- Audio invisible para mantener viva la pestaña -->
-<audio id="keepAlive" loop playsinline style="display:none"></audio>
 
 <script>
 const TOTAL = 50;
 const pads = Array.from({length: TOTAL}, (_, i) => ({num: i+1, name: '', audio: null, url: null}));
 let recognition = null, isListening = false, currentAudio = null;
 let isPlaying = false;
-let wakeLock = null;
-let keepAliveAudio = null;
 
 // Mapa de números: texto → número
 const numWords = {};
@@ -84,6 +76,7 @@ for (let i = 1; i <= 50; i++) {
   numWords[String(i)] = i;
   if (esWords[i]) numWords[esWords[i]] = i;
 }
+// Variantes alternativas que el reconocedor puede transcribir diferente
 const altForms = {
   'veinte y uno': 21, 'veinte y dos': 22, 'veinte y tres': 23, 'veinte y cuatro': 24,
   'veinte y cinco': 25, 'veinte y seis': 26, 'veinte y siete': 27, 'veinte y ocho': 28,
@@ -95,6 +88,7 @@ function norm(str) {
   return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '').trim();
 }
 
+// Mapa normalizado (sin acentos) construido una vez
 const numWordsNorm = {};
 for (const [k, v] of Object.entries(numWords)) {
   numWordsNorm[norm(k)] = v;
@@ -192,72 +186,6 @@ function toggleMic() {
   if (isListening) { stopMic(); } else { startMic(); }
 }
 
-// ===== WAKE LOCK + MEDIA SESSION =====
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-      document.getElementById('wakeLockStatus').textContent = '🔒 Pantalla activa';
-      wakeLock.addEventListener('release', () => {
-        document.getElementById('wakeLockStatus').textContent = '🔓 Pantalla liberada';
-      });
-    }
-  } catch (err) {
-    console.log('Wake Lock no soportado:', err);
-  }
-}
-
-function releaseWakeLock() {
-  if (wakeLock) {
-    wakeLock.release();
-    wakeLock = null;
-  }
-}
-
-function startKeepAliveAudio() {
-  // Crear audio de silencio para engañar al navegador
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  gainNode.gain.value = 0.001; // Casi silencio
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-  oscillator.start();
-  keepAliveAudio = { ctx: audioCtx, osc: oscillator };
-  
-  // También usar Media Session API
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'VozBoard - Escuchando',
-      artist: 'Comandos de voz',
-      album: 'Botonera',
-      artwork: [{ src: '', sizes: '512x512', type: 'image/png' }]
-    });
-    navigator.mediaSession.setActionHandler('play', () => {});
-    navigator.mediaSession.setActionHandler('pause', () => {});
-    navigator.mediaSession.playbackState = 'playing';
-  }
-}
-
-function stopKeepAliveAudio() {
-  if (keepAliveAudio) {
-    keepAliveAudio.osc.stop();
-    keepAliveAudio.ctx.close();
-    keepAliveAudio = null;
-  }
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = 'paused';
-  }
-}
-
-// Re-solicitar wake lock cuando vuelves a la pestaña
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && isListening) {
-    requestWakeLock();
-  }
-});
-// =====================================
-
 function startMic() {
   if (isPlaying) return;
 
@@ -277,10 +205,6 @@ function startMic() {
     document.getElementById('micBtn').textContent = '🔴 Escuchando...';
     setStatus('● escuchando', 'listening');
     showInfo('Di un número del 1 al 50...');
-    
-    // Activar trucos para mantener viva la app
-    requestWakeLock();
-    startKeepAliveAudio();
   };
 
   recognition.onresult = (e) => {
@@ -318,17 +242,15 @@ function stopMic() {
   document.getElementById('micBtn').classList.remove('on');
   document.getElementById('micBtn').textContent = '🎤 Activar micrófono';
   setStatus('listo', '');
-  
-  // Liberar recursos
-  releaseWakeLock();
-  stopKeepAliveAudio();
 }
 
 function processText(text) {
+  // Normalizar: quitar acentos y caracteres raros
   const t = norm(text);
 
   let found = null;
   for (const key of sortedKeys) {
+    // Buscar como palabra completa, no subcadena (evita "dos" dentro de "doce")
     const re = new RegExp('(?<![a-z])' + key.replace(/\s+/g, '\\s+') + '(?![a-z])', 'i');
     if (re.test(t)) { found = numWordsNorm[key]; break; }
   }
